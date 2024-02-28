@@ -41,27 +41,47 @@ async def aggregate_salaries(dt_from, dt_upto, group_type):
 
     # Adjusting the pipeline based on the group_type
     if group_type == "hour":
-        pipeline[0]["$group"]["_id"] = {
-            "year": {"$year": "$date"},
-            "month": {"$month": "$date"},
-            "day": {"$dayOfMonth": "$date"},
-            "hour": {"$hour": "$date"}
+        pipeline[1] = {
+            "$group": {
+                "_id": {
+                    "year": {"$year": "$date"},
+                    "month": {"$month": "$date"},
+                    "day": {"$dayOfMonth": "$date"},
+                    "hour": {"$hour": "$date"}
+                },
+                "total_salary": {"$sum": "$salary"}
+            }
         }
     elif group_type == "day":
-        pipeline[0]["$group"]["_id"] = {
-            "year": {"$year": "$date"},
-            "month": {"$month": "$date"},
-            "day": {"$dayOfMonth": "$date"}
+        pipeline[1] = {
+            "$group": {
+                "_id": {
+                    "year": {"$year": "$date"},
+                    "month": {"$month": "$date"},
+                    "day": {"$dayOfMonth": "$date"}
+                },
+                "total_salary": {"$sum": "$salary"}
+            }
         }
     elif group_type == "month":
-        pipeline[0]["$group"]["_id"] = {
-            "year": {"$year": "$date"},
-            "month": {"$month": "$date"}
+        pipeline[1] = {
+            "$group": {
+                "_id": {
+                    "year": {"$year": "$date"},
+                    "month": {"$month": "$date"}
+                },
+                "total_salary": {"$sum": "$salary"}
+            }
         }
     elif group_type == "week":
-        pipeline[0]["$group"]["_id"] = {
-            "year": {"$year": "$date"},
-            "week": {"$week": "$date"}
+        pipeline[1] = {
+            "$group": {
+                "_id": {
+                    "year": {"$year": "$date"},
+                    "week": {"$week": "$date"}
+                },
+                "total_salary": {"$sum": "$salary"}
+            }
         }
 
     # Execute the aggregation
