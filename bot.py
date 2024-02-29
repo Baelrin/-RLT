@@ -1,54 +1,84 @@
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 import json
-import asyncio
+import logging
+import signal
+
+from dateutil import parser
+from telegram import Update
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
 from master import aggregate_salaries
 
+# Set up logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-async def start(update: Update, context: CallbackContext) -> None:
+BOT_TOKEN = '6948190992:AAEA0GdwkpnlQFnRnmffUsS6oT5k-S9j3U8'
+
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message is not None:
         await update.message.reply_text('Привет! Отправьте JSON с датами и типом агрегации.')
 
 
-async def handle_message(update: Update, context: CallbackContext) -> None:
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message is None:
+        return
     try:
-        if update.message is not None:
-            data = json.loads(update.message.text or '')
+        data = json.loads(update.message.text or '')
         dt_from = data.get('dt_from')
         dt_upto = data.get('dt_upto')
         group_type = data.get('group_type')
 
         if not all([dt_from, dt_upto, group_type]):
-            if update.message is not None:
-                await update.message.reply_text('Неверный формат данных. Отправьте JSON с полями dt_from, dt_upto и group_type.')
+            await update.message.reply_text('Неверный формат данных. Отправьте JSON с полями dt_from, dt_upto и group_type.')
             return
 
-        result = await aggregate_salaries(dt_from, dt_upto, group_type)
+        # Parse dates using dateutil
+        try:
+            dt_from_obj = parser.parse(dt_from)
+            dt_upto_obj = parser.parse(dt_upto)
+        except ValueError:
+            await update.message.reply_text('Ошибка: Неверный формат даты.')
+            return
 
-        if update.message is not None:
-            if 'error' in result:
-                await update.message.reply_text(f"Ошибка: {result['error']}")
-            else:
-                await update.message.reply_text(json.dumps(result))
+        result = await aggregate_salaries(dt_from_obj, dt_upto_obj, group_type)
+
+        if 'error' in result:
+            await update.message.reply_text(f"Ошибка: {result['error']}")
+        else:
+            await update.message.reply_text(json.dumps(result))
     except json.JSONDecodeError:
-        if update.message is not None:
-            await update.message.reply_text('Ошибка: Неверный формат JSON.')
+        await update.message.reply_text('Ошибка: Неверный формат JSON.')
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        await update.message.reply_text('Произошла ошибка при обработке вашего запроса.')
 
 
-async def main() -> None:
-    updater = Updater(
-        "6948190992:AAEA0GdwkpnlQFnRnmffUsS6oT5k-S9j3U8")
+def main() -> None:
+    application = Application.builder().token(BOT_TOKEN).build()
 
-    dispatcher = updater.dispatcher
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
 
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(MessageHandler(
-        filters.text & ~filters.command, handle_message))
+    # Handle signals
+    def signal_handler(sig, frame):
+        logger.info("Received signal %s, stopping...", sig)
+        application.run_polling()
 
-    await updater.start_polling()
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
 
-    while True:
-        await asyncio.sleep(60)  # Ожидание 60 секунд перед следующей итерацией
+    # Run the bot
+    application.run_polling()
+
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()
