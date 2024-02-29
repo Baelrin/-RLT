@@ -28,12 +28,7 @@ async def aggregate_salaries(dt_from, dt_upto, group_type):
     pipeline = [
         {"$match": {"date": {"$gte": dt_from, "$lte": dt_upto}}},
         {"$group": {
-            "_id": {
-                "year": {"$year": "$date"},
-                "month": {"$month": "$date"},
-                "day": {"$dayOfMonth": "$date"},
-                "hour": {"$hour": "$date"}
-            },
+            "_id": {},
             "total_salary": {"$sum": "$salary"}
         }}
     ]
@@ -42,14 +37,10 @@ async def aggregate_salaries(dt_from, dt_upto, group_type):
     if group_type == "hour":
         pipeline[1]["_id"]["hour"] = {"$hour": "$date"}
     elif group_type == "day":
-        del pipeline[1]["_id"]["hour"]
+        pipeline[1]["_id"]["day"] = {"$dayOfMonth": "$date"}
     elif group_type == "month":
-        del pipeline[1]["_id"]["hour"]
-        del pipeline[1]["_id"]["day"]
+        pipeline[1]["_id"]["month"] = {"$month": "$date"}
     elif group_type == "week":
-        del pipeline[1]["_id"]["hour"]
-        del pipeline[1]["_id"]["day"]
-        del pipeline[1]["_id"]["month"]
         pipeline[1]["_id"]["week"] = {"$week": "$date"}
 
     # Execute the aggregation
