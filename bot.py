@@ -19,7 +19,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-BOT_TOKEN = '6948190992:AAEA0GdwkpnlQFnRnmffUsS6oT5k-S9j3U8'
+BOT_TOKEN = # Your bot token
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
